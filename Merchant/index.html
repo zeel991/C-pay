@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Arduino Web Serial Test</title>
+</head>
+<body>
+  <h2>Arduino Web Serial Debug</h2>
+
+  <button id="connectBtn">Connect to Arduino</button>
+  <button id="disconnectBtn" disabled>Disconnect</button>
+  <br><br>
+
+  <input type="text" id="qrInput" placeholder="Enter QR Data" size="40">
+  <button id="sendBtn" disabled>Send</button>
+
+  <h3>Arduino Output:</h3>
+  <pre id="output"></pre>
+
+  <script>
+    let port, writer, reader, keepReading = true;
+
+    const logToScreen = (msg) => {
+      const outputElem = document.getElementById("output");
+      outputElem.textContent += msg + "\n";
+      outputElem.scrollTop = outputElem.scrollHeight;
+    };
+
+    document.getElementById("connectBtn").addEventListener("click", async () => {
+      try {
+        port = await navigator.serial.requestPort();
+        await port.open({ baudRate: 9600 });
+
+        writer = port.writable.getWriter();
+        reader = port.readable.getReader();
+
+        document.getElementById("connectBtn").disabled = true;
+        document.getElementById("disconnectBtn").disabled = false;
+        document.getElementById("sendBtn").disabled = false;
+
+        keepReading = true;
+        (async function readLoop() {
+          while (keepReading) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            if (value) {
+              logToScreen(new TextDecoder().decode(value));
+            }
+          }
+        })();
+
+        alert("Connected to Arduino!");
+      } catch (err) {
+        alert("Connection failed: " + err);
+      }
+    });
+
+    document.getElementById("sendBtn").addEventListener("click", async () => {
+      if (!writer) {
+        alert("Not connected to Arduino!");
+        return;
+      }
+      const qrText = document.getElementById("qrInput").value;
+      if (qrText.trim().length === 0) {
+        alert("Please enter some text.");
+        return;
+      }
+      await writer.write(new TextEncoder().encode(qrText + "\n"));
+      logToScreen("Sent: " + qrText);
+    });
+
+    document.getElementById("disconnectBtn").addEventListener("click", async () => {
+      try {
+        keepReading = false;
+        if (reader) {
+          await reader.cancel();
+          reader.releaseLock();
+        }
+        if (writer) {
+          writer.releaseLock();
+        }
+        if (port) {
+          await port.close();
+        }
+        document.getElementById("connectBtn").disabled = false;
+        document.getElementById("disconnectBtn").disabled = true;
+        document.getElementById("sendBtn").disabled = true;
+        alert("Disconnected from Arduino.");
+      } catch (err) {
+        alert("Error during disconnect: " + err);
+      }
+    });
+  </script>
+</body>
+</html>
