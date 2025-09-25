@@ -12,7 +12,7 @@ export default defineConfig({
   server: {
     open: true,
     allowedHosts: [
-      "90bf1695946f.ngrok-free.app", // 👈 allow your ngrok domain
+      "e2faff1dd731.ngrok-free.app", // 👈 allow your ngrok domain
     ],
   },
   plugins: [
